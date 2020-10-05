@@ -23,20 +23,27 @@ def on_message(client, userdata, msg):
             if dataPoint in datasetName:
                 dataset = datasetName
                 continue
-
         if dataset != "":
             light = ae.find(dataset)
             light()
     elif typ == "MIX":
-        pass
-
+        dataset = ""
+        for datasetName in toggle_other:
+            if dataPoint in datasetName:
+                dataset = datasetName
+                continue
+        if dataset != "":
+            other = ae.find(dataset)
+            #print("FOUND")
+            if payload == "":
+                other()
     elif typ == "EVENT":
         event = ae.find(dataPoint)
         if payload == "":
             event()
 
 def publishToMqttBroker(topic,value):
-    if str(value) != "-999999":
+    if str(value) != "-999999" and str(value) != "-999,999":
         client.publish(topic,value)
         #LOGGER.info(topic + " = " + str(value))
 
@@ -73,6 +80,7 @@ toggle_other = [
     'SMOKE_TOGGLE',
     'GEAR_TOGGLE',
     'PITOT_HEAT_TOGGLE',
+    'PARKING_BRAKES',
 ]
 
 toggle_lights = [
