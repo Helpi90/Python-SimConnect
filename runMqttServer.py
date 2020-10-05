@@ -11,12 +11,34 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.payload))
+    typ =  msg.topic.split("/")[3]
+    dataPoint = msg.topic.split("/")[4]
+    print(dataPoint)
+    payload = msg.payload.decode("utf-8")
+    print(payload)
+    """Check dataPoint"""
+    if typ == "LIGHT":
+        dataset = ""
+        for datasetName in toggle_lights:
+            if dataPoint in datasetName:
+                dataset = datasetName
+                continue
+
+        if dataset != "":
+            light = ae.find(dataset)
+            light()
+    elif typ == "MIX":
+        pass
+
+    elif typ == "EVENT":
+        event = ae.find(dataPoint)
+        if payload == "":
+            event()
 
 def publishToMqttBroker(topic,value):
     if str(value) != "-999999":
         client.publish(topic,value)
         #LOGGER.info(topic + " = " + str(value))
-
 
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -46,6 +68,25 @@ request_lights = [
     'LIGHT_NAV',
     'LIGHT_WING'
 ]
+
+toggle_other = [
+    'SMOKE_TOGGLE',
+    'GEAR_TOGGLE',
+    'PITOT_HEAT_TOGGLE',
+]
+
+toggle_lights = [
+    'TOGGLE_TAXI_LIGHTS',
+    'TOGGLE_BEACON_LIGHTS',
+    'TOGGLE_WING_LIGHTS',
+    'TOGGLE_NAV_LIGHTS',
+    'TOGGLE_CABIN_LIGHTS',
+    'LANDING_LIGHTS_TOGGLE',
+    'PANEL_LIGHTS_TOGGLE',
+    'ALL_LIGHTS_TOGGLE',
+    'STROBES_TOGGLE',
+]
+
 request_autopilot = [
 	'AUTOPILOT_MASTER',
 	'AUTOPILOT_AVAILABLE',
@@ -130,12 +171,6 @@ def publishLightsData():
     for light in request_lights:
         state = aq.get(light)
         publishToMqttBroker(topic+light,state)
-
-def setLight(dataPoint):
-    #taxiLight = ae.find("TOGGLE_TAXI_LIGHTS")
-    light = ae.find(dataPoint)
-    light()
-
 
 if __name__ == '__main__':
     client.loop_start()
