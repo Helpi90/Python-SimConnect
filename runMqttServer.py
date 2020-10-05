@@ -5,30 +5,18 @@ from time import sleep
 import paho.mqtt.client as mqtt
 
 """Mqtt functions and settings"""
-# The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
+    client.subscribe("/FS/SET/#")
 
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe("$SYS/#")
-
-# The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.payload))
 
 def publishToMqttBroker(topic,value):
     if str(value) != "-999999":
         client.publish(topic,value)
-        LOGGER.info(topic + " = " + str(value))
+        #LOGGER.info(topic + " = " + str(value))
 
-def publishDatasetToMqttBroker(datasetName):
-    dataset = request_trim
-    for datapoint in dataset:
-        data = aq.get(datapoint)
-        if str(data) != "-999999":
-            client.publish("/FS/"+datasetName.split("_")[1]+"/"+datapoint,data)
-            LOGGER.info("/FS/"+datasetName.split("_")[1]+"/"+datapoint + " = " + str(data))
 
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -98,11 +86,9 @@ request_autopilot = [
 	'FLY_BY_WIRE_SEC_FAILED'
 ]
 
+"""Functions"""
 def thousandify(x):
     return f"{x:,}"
-
-def getRPM():
-    publishToMqttBroker("/FS/RPM", aq.get("GENERAL_ENG_RPM1"))
 
 def publishNavigationData():
     topic = "/FS/NAV/"
@@ -111,6 +97,7 @@ def publishNavigationData():
     publishToMqttBroker(topic+"MAGNETIC_COMPASS",aq.get("MAGNETIC_COMPASS"))
     publishToMqttBroker(topic+"MAGVAR",aq.get("MAGVAR"))
     publishToMqttBroker(topic+"VERTICAL_SPEED",aq.get("VERTICAL_SPEED"))
+    publishToMqttBroker(topic+"PLANE_ALTITUDE",thousandify(round(aq.get("PLANE_ALTITUDE"))))
 
 def publishAirspeedData():
     publishToMqttBroker("/FS/AIRSPEED",round(aq.get("AIRSPEED_INDICATED")))
@@ -122,10 +109,6 @@ def publishEngineData():
     publishToMqttBroker("AVL",round(aq.get("TURB_ENG_N1:1")))
     fuel_percentage = (aq.get("FUEL_TOTAL_QUANTITY") / aq.get("FUEL_TOTAL_CAPACITY")) * 100
     publishToMqttBroker(topic+"FUEL_PERCENTAGE",round(fuel_percentage))
-    #print(aq.get("ENGINE_TYPE"))
-    #print(aq.get("TURB_ENG_N1:1"))
-
-    #print(aq.get("TURB_ENG_N2:1"))
 
 def publishFlapsData():
     topic = "/FS/FLAPS/"
@@ -148,27 +131,20 @@ def publishLightsData():
         state = aq.get(light)
         publishToMqttBroker(topic+light,state)
 
-def setTaxiLight():
-    taxiLight = ae.find("TOGGLE_TAXI_LIGHTS")
-    taxiLight()
+def setLight(dataPoint):
+    #taxiLight = ae.find("TOGGLE_TAXI_LIGHTS")
+    light = ae.find(dataPoint)
+    light()
 
 
 if __name__ == '__main__':
+    client.loop_start()
     while True:
-        print("-------------------------------------\n")
         publishNavigationData()
-        print("-------------------------------------\n")
         publishFlapsData()
-        print("-------------------------------------\n")
         publishTrimData()
-        print("-------------------------------------\n")
         #publishAutopilotData()
-        print("-------------------------------------\n")
         publishEngineData()
-        print("-------------------------------------\n")
         publishAirspeedData()
-        print("-------------------------------------\n")
         publishLightsData()
-        print("-------------------------------------\n")
         sleep(2)
-    sm.exit()
