@@ -1,3 +1,5 @@
+import json
+
 from SimConnect import *
 import logging
 from SimConnect.Enum import *
@@ -28,9 +30,9 @@ def on_message(client, userdata, msg):
         if dataset != "":
             light = ae.find(dataset)
             light()
-    elif typ == "MIX":
+    elif typ == "PLANE":
         dataset = ""
-        for datasetName in toggle_other:
+        for datasetName in toggle_plane:
             if dataPoint in datasetName:
                 dataset = datasetName
                 continue
@@ -44,9 +46,9 @@ def on_message(client, userdata, msg):
             event()
 
 def publishToMqttBroker(topic,value):
-    if str(value) != "-999999" and str(value) != "-999,999":
+    if str(value) != "-999999" and str(value) != "-999,999" and str(value) != "-99999900":
         client.publish(topic,value)
-        #LOGGER.debug(topic + " = " + str(value))
+        LOGGER.debug(topic + " = " + str(value))
 
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -61,7 +63,6 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.info("START")
 
 """Simconnect Settings"""
-# creat simconnection and pass used user classes
 sm = SimConnect()
 aq = AircraftRequests(sm)
 ae = AircraftEvents(sm)
@@ -77,7 +78,7 @@ request_lights = [
     'LIGHT_WING'
 ]
 
-toggle_other = [
+toggle_plane = [
     'SMOKE_TOGGLE',
     'GEAR_TOGGLE',
     'PITOT_HEAT_TOGGLE',
@@ -100,27 +101,14 @@ request_autopilot = [
 	'AUTOPILOT_MASTER',
 	'AUTOPILOT_AVAILABLE',
 	'AUTOPILOT_NAV_SELECTED',
-	'AUTOPILOT_WING_LEVELER',
-	'AUTOPILOT_NAV1_LOCK',
-	'AUTOPILOT_HEADING_LOCK',
-	'AUTOPILOT_HEADING_LOCK_DIR',
-	'AUTOPILOT_ALTITUDE_LOCK',
 	'AUTOPILOT_ALTITUDE_LOCK_VAR',
 	'AUTOPILOT_ATTITUDE_HOLD',
-	'AUTOPILOT_GLIDESLOPE_HOLD',
-	'AUTOPILOT_PITCH_HOLD_REF',
-	'AUTOPILOT_APPROACH_HOLD',
-	'AUTOPILOT_BACKCOURSE_HOLD',
 	'AUTOPILOT_VERTICAL_HOLD_VAR',
-	'AUTOPILOT_PITCH_HOLD',
 	'AUTOPILOT_FLIGHT_DIRECTOR_ACTIVE',
 	'AUTOPILOT_FLIGHT_DIRECTOR_PITCH',
 	'AUTOPILOT_FLIGHT_DIRECTOR_BANK',
-	'AUTOPILOT_AIRSPEED_HOLD',
 	'AUTOPILOT_AIRSPEED_HOLD_VAR',
-	'AUTOPILOT_MACH_HOLD',
 	'AUTOPILOT_MACH_HOLD_VAR',
-	'AUTOPILOT_YAW_DAMPER',
 	'AUTOPILOT_RPM_HOLD_VAR',
 	'AUTOPILOT_THROTTLE_ARM',
 	'AUTOPILOT_TAKEOFF_POWER ACTIVE',
@@ -128,12 +116,6 @@ request_autopilot = [
 	'AUTOPILOT_VERTICAL_HOLD',
 	'AUTOPILOT_RPM_HOLD',
 	'AUTOPILOT_MAX_BANK',
-	'FLY_BY_WIRE_ELAC_SWITCH',
-	'FLY_BY_WIRE_FAC_SWITCH',
-	'FLY_BY_WIRE_SEC_SWITCH',
-	'FLY_BY_WIRE_ELAC_FAILED',
-	'FLY_BY_WIRE_FAC_FAILED',
-	'FLY_BY_WIRE_SEC_FAILED'
 ]
 
 """Functions"""
@@ -149,8 +131,10 @@ def publishNavigationData():
     publishToMqttBroker(topic+"VERTICAL_SPEED",aq.get("VERTICAL_SPEED"))
     publishToMqttBroker(topic+"PLANE_ALTITUDE",thousandify(round(aq.get("PLANE_ALTITUDE"))))
 
-def publishAirspeedData():
-    publishToMqttBroker("/FS/AIRSPEED",round(aq.get("AIRSPEED_INDICATED")))
+def publishPlaneData():
+    topic = "/FS/PLANE/"
+    publishToMqttBroker(topic+"AIRSPEED",round(aq.get("AIRSPEED_INDICATED")))
+    publishToMqttBroker(topic+"PARK_BRAKE",round(aq.get("BRAKE_PARKING_INDICATOR")))
 
 def publishEngineData():
     topic = "/FS/ENG/"
@@ -170,7 +154,7 @@ def publishTrimData():
     publishToMqttBroker(topic+"RUDDER_TRIM_PCT",round(aq.get("RUDDER_TRIM_PCT") * 100))
 
 def publishAutopilotData():
-    topic = "/FS/AUTO"
+    topic = "/FS/AUTO/"
     for dataPoint in request_autopilot:
         data = aq.get(dataPoint)
         publishToMqttBroker(topic+dataPoint,data)
@@ -184,11 +168,12 @@ def publishLightsData():
 if __name__ == '__main__':
     client.loop_start()
     while True:
-        publishNavigationData()
-        publishFlapsData()
-        publishTrimData()
-        #publishAutopilotData()
-        publishEngineData()
-        publishAirspeedData()
-        publishLightsData()
-        sleep(2)
+        if round(aq.get("AIRSPEED_INDICATED")) != 0 and round(aq.get("TURB_ENG_N1:1")) != 0:
+            #publishNavigationData()
+            #publishFlapsData()
+            #publishTrimData()
+            publishAutopilotData()
+            #publishEngineData()
+            #publishPlaneData()
+            #publishLightsData()
+            sleep(2)
