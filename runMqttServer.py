@@ -10,12 +10,14 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("/FS/SET/#")
 
 def on_message(client, userdata, msg):
-    print(msg.topic + " " + str(msg.payload))
+    LOGGER.debug(msg.topic + " " + str(msg.payload))
+    if len(msg.topic.split("/")) < 5:
+        LOGGER.error("invalid topic")
+        return 0
     typ =  msg.topic.split("/")[3]
     dataPoint = msg.topic.split("/")[4]
-    print(dataPoint)
+    LOGGER.debug("TYP=" + typ + " Datapoint = " + dataPoint)
     payload = msg.payload.decode("utf-8")
-    print(payload)
     """Check dataPoint"""
     if typ == "LIGHT":
         dataset = ""
@@ -34,7 +36,6 @@ def on_message(client, userdata, msg):
                 continue
         if dataset != "":
             other = ae.find(dataset)
-            #print("FOUND")
             if payload == "":
                 other()
     elif typ == "EVENT":
@@ -45,7 +46,7 @@ def on_message(client, userdata, msg):
 def publishToMqttBroker(topic,value):
     if str(value) != "-999999" and str(value) != "-999,999":
         client.publish(topic,value)
-        #LOGGER.info(topic + " = " + str(value))
+        #LOGGER.debug(topic + " = " + str(value))
 
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -155,7 +156,7 @@ def publishEngineData():
     topic = "/FS/ENG/"
     publishToMqttBroker(topic+"NUMBER_OF_ENGINES",str(round(aq.get("NUMBER_OF_ENGINES"))))
     publishToMqttBroker(topic+"GENERAL_ENG_RPM",round(aq.get("GENERAL_ENG_RPM:1")))
-    publishToMqttBroker("AVL",round(aq.get("TURB_ENG_N1:1")))
+    publishToMqttBroker(topic+"AVL",round(aq.get("TURB_ENG_N1:1")))
     fuel_percentage = (aq.get("FUEL_TOTAL_QUANTITY") / aq.get("FUEL_TOTAL_CAPACITY")) * 100
     publishToMqttBroker(topic+"FUEL_PERCENTAGE",round(fuel_percentage))
 
